@@ -221,7 +221,7 @@ void mem_init()
     emptyBlocks.clear();
     occupiedBlocks.clear();
     memset(mem,0,sizeof mem);
-    emptyBlocks.push_back(make_block(0,mem_max-1));
+    emptyBlocks.push_back(make_block(0,mem_max));
 
     //sort(emptyBlocks.begin(),emptyBlocks.end(),cmp_best);
 }
@@ -246,14 +246,27 @@ int main()
             printf("%d\t",request_size);
         }
         while (mem_request(request_size));
+        for (int i=0;i<emptyBlocks.size();i++)
+            printf("start:%d size:%d end:%d\n",emptyBlocks[i].firstADDR,emptyBlocks[i].size,emptyBlocks[i].lastADDR);
         if (occupiedBlocks.size())
         {
             printf("count:%d\n",occupiedBlocks.size());
 //            int release_block=rand()%occupiedBlocks.size();
-            int release_block=2;
+            int release_block=1;
             mem_release(release_block);
             for (int i=0; i<mem_max; i++)
                 printf("%d",mem[i]);
+            printf("\n");
+            for (int i=0;i<emptyBlocks.size();i++)
+                printf("start:%d size:%d end:%d\n",emptyBlocks[i].firstADDR,emptyBlocks[i].size,emptyBlocks[i].lastADDR);
+            release_block=1;
+            mem_release(release_block);
+            for (int i=0; i<mem_max; i++)
+                printf("%d",mem[i]);
+            printf("\n");
+            for (int i=0;i<emptyBlocks.size();i++)
+                printf("start:%d size:%d end:%d\n",emptyBlocks[i].firstADDR,emptyBlocks[i].size,emptyBlocks[i].lastADDR);
+
         }
         else
         {
