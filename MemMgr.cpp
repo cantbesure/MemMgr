@@ -7,6 +7,7 @@
    ----2：best-fit
    ----3：worst-fit
    #sim_steps 模拟次数
+   !#使用bitset 注意输出时反序
 *****************************************************/
 #include <cstdlib>
 #include <cstdio>
@@ -15,13 +16,15 @@
 #include <vector>
 #include <cstring>
 #include <algorithm>
+#include <bitset>
+#include <iostream>
 //c++ 11
 #include <random>
 #include <chrono>
 
 #define mem_max 10
 #define method 0
-#define sim_steps 1
+#define sim_steps 5
 using namespace std;
 
 //块结构体
@@ -59,14 +62,15 @@ bool cmp_worst(BLOCK  a,BLOCK b)
 
 vector <BLOCK> emptyBlocks;
 vector <BLOCK> occupiedBlocks;
-
-int mem[mem_max];//模拟内存
+bitset<mem_max> membit;
+//int mem[mem_max];//模拟内存
 int mem_index=0;//存next-fit
+
 //请求内存
 bool mem_request(int request_size)
 {
     int index=-2;
-    switch (method)//选择算法
+    switch (method)//选择算法，由于每次请求后可能会出现新的块，所以我们在请求之前进行排序
     {
     case 0:
         sort(emptyBlocks.begin(),emptyBlocks.end(),cmp_first);
@@ -92,7 +96,7 @@ bool mem_request(int request_size)
                     BLOCK b=emptyBlocks[i];
                     occupiedBlocks.push_back(b);
                     for (int j=b.firstADDR; j<=b.lastADDR; j++)
-                        mem[j]=1;
+                        membit.set(j);
                     emptyBlocks.erase(emptyBlocks.begin()+i);
                 }
                 else//切割写块
@@ -100,7 +104,7 @@ bool mem_request(int request_size)
                     BLOCK b=make_block(emptyBlocks[i].firstADDR,request_size);
                     occupiedBlocks.push_back(b);
                     for (int j=b.firstADDR; j<=b.lastADDR; j++)
-                        mem[j]=1;
+                        membit.set(j);
                     emptyBlocks[i].size-=request_size;
                     emptyBlocks[i].firstADDR+=request_size;
 
@@ -123,7 +127,7 @@ bool mem_request(int request_size)
                     BLOCK b=emptyBlocks[i];
                     occupiedBlocks.push_back(b);
                     for (int j=b.firstADDR; j<=b.lastADDR; j++)
-                        mem[j]=1;
+                        membit.set(j);
                     emptyBlocks.erase(emptyBlocks.begin()+i);
                     i--;
                 }
@@ -132,7 +136,7 @@ bool mem_request(int request_size)
                     BLOCK b=make_block(emptyBlocks[i].firstADDR,request_size);
                     occupiedBlocks.push_back(b);
                     for (int j=b.firstADDR; j<=b.lastADDR; j++)
-                        mem[j]=1;
+                        membit.set(j);
                     emptyBlocks[i].size-=request_size;
                     emptyBlocks[i].firstADDR+=request_size;
 
@@ -152,7 +156,8 @@ void mem_release(int release_block)
 {
     BLOCK b=occupiedBlocks[release_block];
     //printf("%d\t",b.size);
-    if (b.firstADDR>0&&mem[b.firstADDR-1]!=1&&b.lastADDR<mem_max-1&&mem[b.lastADDR+1]!=1)
+
+    if (b.firstADDR>0&&membit[b.firstADDR-1]!=1&&b.lastADDR<mem_max-1&&membit[b.lastADDR+1]!=1)
     {
         //左右都空
         BLOCK n=make_block(0,b.size);
@@ -179,7 +184,7 @@ void mem_release(int release_block)
             }
         }
     }
-    else if (b.firstADDR>0&&mem[b.firstADDR-1]!=1)
+    else if (b.firstADDR>0&&membit[b.firstADDR-1]!=1)
     {
         //左空
         for (int i=0; i<emptyBlocks.size(); i++)
@@ -193,7 +198,7 @@ void mem_release(int release_block)
         }
 
     }
-    else if (b.lastADDR<mem_max-1&&mem[b.lastADDR+1]!=1)
+    else if (b.lastADDR<mem_max-1&&membit[b.lastADDR+1]!=1)
     {
         for (int i=0; i<emptyBlocks.size(); i++)
         {
@@ -212,7 +217,8 @@ void mem_release(int release_block)
         emptyBlocks.push_back(b);
 
     }
-    memset(mem+b.firstADDR,0,b.size*(sizeof (int)));
+    for (int i=b.firstADDR;i<=b.lastADDR;i++)
+        membit.reset(i);
     occupiedBlocks.erase(occupiedBlocks.begin()+release_block);
 }
 //初始化
@@ -220,9 +226,8 @@ void mem_init()
 {
     emptyBlocks.clear();
     occupiedBlocks.clear();
-    memset(mem,0,sizeof mem);
     emptyBlocks.push_back(make_block(0,mem_max));
-
+    membit.reset();
     //sort(emptyBlocks.begin(),emptyBlocks.end(),cmp_best);
 }
 int main()
@@ -235,37 +240,38 @@ int main()
     normal_distribution<double> distribution(mem_max/2,2);
 
     mem_init();
-
     for (int sim_cnt=0; sim_cnt<sim_steps; sim_cnt++)
     {
         int request_size=0;
         do
+
         {
-//            request_size=(int) distribution(generator);
-            request_size=3;
+            request_size=(int) distribution(generator);
+            //request_size=3;
+            if (request_size<=0)//用来修正正态分布，还没懂怎么去
+                continue;
             printf("%d\t",request_size);
         }
         while (mem_request(request_size));
+        putchar('\n');
+
         for (int i=0;i<emptyBlocks.size();i++)
-            printf("start:%d size:%d end:%d\n",emptyBlocks[i].firstADDR,emptyBlocks[i].size,emptyBlocks[i].lastADDR);
+            printf("estart:%d size:%d end:%d\n",emptyBlocks[i].firstADDR,emptyBlocks[i].size,emptyBlocks[i].lastADDR);
+
         if (occupiedBlocks.size())
         {
             printf("count:%d\n",occupiedBlocks.size());
-//            int release_block=rand()%occupiedBlocks.size();
-            int release_block=1;
+            int release_block=rand()%occupiedBlocks.size();
+            //int release_block=1;
             mem_release(release_block);
-            for (int i=0; i<mem_max; i++)
-                printf("%d",mem[i]);
-            printf("\n");
+             cout<<membit.to_string()<<endl;
             for (int i=0;i<emptyBlocks.size();i++)
-                printf("start:%d size:%d end:%d\n",emptyBlocks[i].firstADDR,emptyBlocks[i].size,emptyBlocks[i].lastADDR);
-            release_block=1;
-            mem_release(release_block);
-            for (int i=0; i<mem_max; i++)
-                printf("%d",mem[i]);
-            printf("\n");
-            for (int i=0;i<emptyBlocks.size();i++)
-                printf("start:%d size:%d end:%d\n",emptyBlocks[i].firstADDR,emptyBlocks[i].size,emptyBlocks[i].lastADDR);
+                printf("ostart:%d size:%d end:%d\n",emptyBlocks[i].firstADDR,emptyBlocks[i].size,emptyBlocks[i].lastADDR);
+//            release_block=1;
+//            mem_release(release_block);
+//            cout<<membit.to_string()<<endl;
+//            for (int i=0;i<emptyBlocks.size();i++)
+//                printf("start:%d size:%d end:%d\n",emptyBlocks[i].firstADDR,emptyBlocks[i].size,emptyBlocks[i].lastADDR);
 
         }
         else
