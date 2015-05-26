@@ -233,6 +233,7 @@ void mem_init()
 int main()
 {
     //freopen("normal.txt","w",stdout);
+     double rate=0.0;//
     //取时间种子
     unsigned seed = chrono::system_clock::now().time_since_epoch().count();
     default_random_engine generator(seed);
