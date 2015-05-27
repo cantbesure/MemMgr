@@ -70,20 +70,20 @@ int mem_index=0;//存next-fit
 bool mem_request(int request_size)
 {
     int index=-2;
-    switch (method)//选择算法，由于每次请求后可能会出现新的块，所以我们在请求之前进行排序
+    switch (method)//选择策略，由于每次请求后可能会出现新的块，所以我们在请求之前进行排序
     {
     case 0:
-        sort(emptyBlocks.begin(),emptyBlocks.end(),cmp_first);
+        sort(emptyBlocks.begin(),emptyBlocks.end(),cmp_first);//first-fit
         break;
     case 1:
-        index=mem_index;
+        index=mem_index;//next-fit
         sort(emptyBlocks.begin(),emptyBlocks.end(),cmp_first);
         break;
     case 2:
-        sort(emptyBlocks.begin(),emptyBlocks.end(),cmp_best);
+        sort(emptyBlocks.begin(),emptyBlocks.end(),cmp_best);//best-fit
         break;
     case 3:
-        sort(emptyBlocks.begin(),emptyBlocks.end(),cmp_worst);
+        sort(emptyBlocks.begin(),emptyBlocks.end(),cmp_worst);//worst-fit
         break;
     }
     if (index==-2)
@@ -91,7 +91,7 @@ bool mem_request(int request_size)
         {
             if (emptyBlocks[i].size>=request_size)
             {
-                if (emptyBlocks[i].size==request_size)//直接写块
+                if (emptyBlocks[i].size==request_size)//如果选中块的大小正好，直接写块
                 {
                     BLOCK b=emptyBlocks[i];
                     occupiedBlocks.push_back(b);
@@ -99,7 +99,7 @@ bool mem_request(int request_size)
                         membit.set(j);
                     emptyBlocks.erase(emptyBlocks.begin()+i);
                 }
-                else//切割写块
+                else//否则，切割写块
                 {
                     BLOCK b=make_block(emptyBlocks[i].firstADDR,request_size);
                     occupiedBlocks.push_back(b);
@@ -117,12 +117,13 @@ bool mem_request(int request_size)
         if (index==-1)
             if (emptyBlocks.size()) index=0;
             else return false;
+		//通过index以及mem_index传递进行next-fit
         for (int cnt=0; cnt<emptyBlocks.size(); cnt++)
         {
             int i=(cnt+index)%emptyBlocks.size();
             if (emptyBlocks[i].size>=request_size)
             {
-                if (emptyBlocks[i].size==request_size)//直接写块
+                if (emptyBlocks[i].size==request_size)//如果选中块的大小正好，直接写块
                 {
                     BLOCK b=emptyBlocks[i];
                     occupiedBlocks.push_back(b);
@@ -131,7 +132,7 @@ bool mem_request(int request_size)
                     emptyBlocks.erase(emptyBlocks.begin()+i);
                     i--;
                 }
-                else//切割写块
+                else//否则，切割写块
                 {
                     BLOCK b=make_block(emptyBlocks[i].firstADDR,request_size);
                     occupiedBlocks.push_back(b);
@@ -154,12 +155,12 @@ bool mem_request(int request_size)
 //释放内存
 void mem_release(int release_block)
 {
-    BLOCK b=occupiedBlocks[release_block];
+    BLOCK b=occupiedBlocks[release_block];//选取要释放的块
     //printf("%d\t",b.size);
-
+	//判断释放后的空块重置
     if (b.firstADDR>0&&membit[b.firstADDR-1]!=1&&b.lastADDR<mem_max-1&&membit[b.lastADDR+1]!=1)
     {
-        //左右都空
+        //左右都空，找到左右的块进行修改
         BLOCK n=make_block(0,b.size);
         int fi=-1,li=-1;
         for (int i=0; i<emptyBlocks.size(); i++)
@@ -186,7 +187,7 @@ void mem_release(int release_block)
     }
     else if (b.firstADDR>0&&membit[b.firstADDR-1]!=1)
     {
-        //左空
+        //左空，找到左边的块进行修改
         for (int i=0; i<emptyBlocks.size(); i++)
         {
             if (emptyBlocks[i].lastADDR==b.firstADDR-1)
@@ -209,29 +210,30 @@ void mem_release(int release_block)
                 break;
             }
         }
-        //右空
+        //右空，找到右边的块进行修改
     }
     else
     {
-        //都不空
+        //都不空，直接放入空块表
         emptyBlocks.push_back(b);
 
     }
     for (int i=b.firstADDR;i<=b.lastADDR;i++)
-        membit.reset(i);
+        membit.reset(i);//写入模拟内存
     occupiedBlocks.erase(occupiedBlocks.begin()+release_block);
 }
 //初始化
 void mem_init()
 {
-    emptyBlocks.clear();
-    occupiedBlocks.clear();
-    emptyBlocks.push_back(make_block(0,mem_max));
-    membit.reset();
+    emptyBlocks.clear();//清空空块表
+    occupiedBlocks.clear();//清空占用块表
+    emptyBlocks.push_back(make_block(0,mem_max));//将整个当作第一个空块放入表中
+    membit.reset();//清空内存
 }
+
 int main()
 {
-    //freopen("normal.txt","w",stdout);
+    //freopen("normal.txt","w",stdout);//输出到文件
      double rate=0.0;//
     //取时间种子
     unsigned seed = chrono::system_clock::now().time_since_epoch().count();
@@ -248,18 +250,18 @@ int main()
         {
             request_size=(int) distribution(generator);
 
-            if (request_size<=0||request_size>=mem_max)//用来修正正态分布
+            if (request_size<=0||request_size>=mem_max)//防止产生越界值，用来修正正态分布
                 continue;
             printf("%d\t",request_size);
         }
-        while (mem_request(request_size));
+        while (mem_request(request_size));//申请不到跳出循环
         putchar('\n');
         //计算使用率
         cout<<membit.count()*1.0/mem_max*100<<"%"<<endl;
         for (int i=0;i<emptyBlocks.size();i++)
             printf("estart:%d size:%d end:%d\n",emptyBlocks[i].firstADDR,emptyBlocks[i].size,emptyBlocks[i].lastADDR);
 
-        if (occupiedBlocks.size())
+        if (occupiedBlocks.size())//判断是否有空块
         {
             printf("count:%d\n",occupiedBlocks.size());
             int release_block=rand()%occupiedBlocks.size();
