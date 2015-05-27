@@ -22,9 +22,9 @@
 #include <random>
 #include <chrono>
 
-#define mem_max 10
+#define mem_max 128
 #define method 0
-#define sim_steps 5
+#define sim_steps 10000
 using namespace std;
 
 //块结构体
@@ -228,7 +228,6 @@ void mem_init()
     occupiedBlocks.clear();
     emptyBlocks.push_back(make_block(0,mem_max));
     membit.reset();
-    //sort(emptyBlocks.begin(),emptyBlocks.end(),cmp_best);
 }
 int main()
 {
@@ -238,7 +237,7 @@ int main()
     unsigned seed = chrono::system_clock::now().time_since_epoch().count();
     default_random_engine generator(seed);
     //正态分布
-    normal_distribution<double> distribution(mem_max/2,2);
+    normal_distribution<double> distribution(mem_max/10,mem_max/30);
 
     mem_init();
     for (int sim_cnt=0; sim_cnt<sim_steps; sim_cnt++)
@@ -248,14 +247,15 @@ int main()
 
         {
             request_size=(int) distribution(generator);
-            //request_size=3;
-            if (request_size<=0)//用来修正正态分布，还没懂怎么去
+
+            if (request_size<=0||request_size>=mem_max)//用来修正正态分布
                 continue;
             printf("%d\t",request_size);
         }
         while (mem_request(request_size));
         putchar('\n');
-
+        //计算使用率
+        cout<<membit.count()*1.0/mem_max*100<<"%"<<endl;
         for (int i=0;i<emptyBlocks.size();i++)
             printf("estart:%d size:%d end:%d\n",emptyBlocks[i].firstADDR,emptyBlocks[i].size,emptyBlocks[i].lastADDR);
 
@@ -263,16 +263,11 @@ int main()
         {
             printf("count:%d\n",occupiedBlocks.size());
             int release_block=rand()%occupiedBlocks.size();
-            //int release_block=1;
+
             mem_release(release_block);
-             cout<<membit.to_string()<<endl;
+
             for (int i=0;i<emptyBlocks.size();i++)
                 printf("ostart:%d size:%d end:%d\n",emptyBlocks[i].firstADDR,emptyBlocks[i].size,emptyBlocks[i].lastADDR);
-//            release_block=1;
-//            mem_release(release_block);
-//            cout<<membit.to_string()<<endl;
-//            for (int i=0;i<emptyBlocks.size();i++)
-//                printf("start:%d size:%d end:%d\n",emptyBlocks[i].firstADDR,emptyBlocks[i].size,emptyBlocks[i].lastADDR);
 
         }
         else
