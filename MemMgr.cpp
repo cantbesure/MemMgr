@@ -252,7 +252,7 @@ int main()
 
             if (request_size<=0||request_size>=mem_max)//防止产生越界值，用来修正正态分布
                 continue;
-            printf("%d\t",request_size);
+            printf("%d\t",request_size);//fot test
         }
         while (mem_request(request_size));//申请不到跳出循环
         putchar('\n');
